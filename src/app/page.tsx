@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import JournalEntry from "@/components/JournalEntry";
 import { getRandomQuote, getFallbackQuote, Quote } from "@/data/quotes";
 import { useAuth } from "@/context/auth";
@@ -15,7 +14,8 @@ interface JournalData {
 }
 
 export default function Home() {
-  const [date, setDate] = useState<string | null>(null);
+  const [date, setDate] = useState<string>("");
+  const [displayDate, setDisplayDate] = useState<string>("");
   const [quote, setQuote] = useState<Quote>({
     text: "Loading today's inspiration...",
     author: "",
@@ -29,8 +29,32 @@ export default function Home() {
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    // Set date only on the client side to avoid hydration mismatch
-    setDate(new Date().toISOString().split("T")[0]);
+    if (typeof window !== "undefined") {
+      // Create a fixed date reference for today
+      const today = new Date();
+
+      // Format for storage key (YYYY-MM-DD)
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      const formattedDate = `${year}-${month}-${day}`;
+
+      // Format for display
+      const formattedDisplayDate = today.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // Log for debugging
+      console.log("Today's date:", formattedDate);
+      console.log("Display date:", formattedDisplayDate);
+
+      // Update state
+      setDate(formattedDate);
+      setDisplayDate(formattedDisplayDate);
+    }
   }, []);
 
   useEffect(() => {
@@ -49,8 +73,10 @@ export default function Home() {
       }
     };
 
-    // Load journal data from local storage
+    // Load journal data from local storage for today
     const loadJournalData = () => {
+      if (typeof window === "undefined") return;
+
       const savedData = localStorage.getItem(`journal_${date}`);
       if (savedData) {
         try {
@@ -59,7 +85,7 @@ export default function Home() {
           console.error("Error parsing saved journal data:", error);
         }
       } else {
-        // Reset to empty if no data for this date
+        // Reset to empty if no data for today
         setJournalData({
           gratitude: ["", "", ""],
           goals: ["", "", ""],
@@ -74,11 +100,15 @@ export default function Home() {
 
   const handleJournalChange = (updatedData: JournalData) => {
     setJournalData(updatedData);
-    localStorage.setItem(`journal_${date}`, JSON.stringify(updatedData));
-  };
 
-  const handleDateChange = (newDate: string) => {
-    setDate(newDate);
+    // Save to today's journal entry
+    if (date && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`journal_${date}`, JSON.stringify(updatedData));
+      } catch (error) {
+        console.error("Error saving journal data:", error);
+      }
+    }
   };
 
   return (
@@ -115,21 +145,13 @@ export default function Home() {
         {/* Header with navigation */}
         <header className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-medium text-pink-500 font-cute mt-4">
-            5 Minute Vibes
+            5 Minute Vibe
           </h1>
 
-          {/* Date display */}
+          {/* Today's Date Display */}
           <div className="mt-2 text-center">
             <p className="text-sm text-text/70">
-              Journal Date:{" "}
-              {date
-                ? new Date(date).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })
-                : "Loading..."}
+              Journal Date: {displayDate || "Loading..."}
             </p>
           </div>
         </header>

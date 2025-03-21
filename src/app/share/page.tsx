@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ShareToFarcaster from "@/components/ShareToFarcaster";
 import JournalSection from "@/app/components/JournalSection";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 
 interface JournalData {
   gratitude: string[];
@@ -35,7 +35,11 @@ export default function SharePage() {
     }
   }, [searchParams]);
 
-  const handleShareItem = (text: string, prefixText?: string) => {
+  const handleShareItem = (
+    text: string,
+    prefixText?: string,
+    section: string = "journal"
+  ) => {
     const formattedText = prefixText ? `${prefixText}: ${text}` : text;
     setSelectedText(formattedText);
     setIsShareModalOpen(true);
@@ -140,7 +144,11 @@ export default function SharePage() {
                       <button
                         key={`g-${i}`}
                         onClick={() =>
-                          handleShareItem(item, "I am grateful for")
+                          handleShareItem(
+                            item,
+                            "I am grateful for",
+                            "gratitude"
+                          )
                         }
                         className="px-3 py-1 bg-primary/20 hover:bg-primary/30 rounded-full text-sm text-text/80 transition-all duration-300"
                       >
@@ -154,7 +162,11 @@ export default function SharePage() {
                       <button
                         key={`gl-${i}`}
                         onClick={() =>
-                          handleShareItem(item, "Today would be great if")
+                          handleShareItem(
+                            item,
+                            "Today would be great if",
+                            "goals"
+                          )
                         }
                         className="px-3 py-1 bg-primary/20 hover:bg-primary/30 rounded-full text-sm text-text/80 transition-all duration-300"
                       >
@@ -167,7 +179,9 @@ export default function SharePage() {
                     item.trim() ? (
                       <button
                         key={`a-${i}`}
-                        onClick={() => handleShareItem(item, "I am")}
+                        onClick={() =>
+                          handleShareItem(item, "I am", "affirmations")
+                        }
                         className="px-3 py-1 bg-primary/20 hover:bg-primary/30 rounded-full text-sm text-text/80 transition-all duration-300"
                       >
                         Affirmation {i + 1}
@@ -182,7 +196,8 @@ export default function SharePage() {
       </div>
 
       <ShareToFarcaster
-        text={selectedText}
+        section="journal"
+        content={selectedText}
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
       />

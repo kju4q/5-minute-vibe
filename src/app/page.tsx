@@ -6,6 +6,7 @@ import { getRandomQuote, getFallbackQuote, Quote } from "@/data/quotes";
 import { useAuth } from "@/context/auth";
 import FarcasterLogin from "@/components/FarcasterLogin";
 import BreathingCircle from "@/components/BreathingCircle";
+import SocialLinks from "@/components/SocialLinks";
 
 interface JournalData {
   gratitude: string[];
@@ -17,7 +18,7 @@ export default function Home() {
   const [date, setDate] = useState<string>("");
   const [displayDate, setDisplayDate] = useState<string>("");
   const [quote, setQuote] = useState<Quote>({
-    text: "Loading today's inspiration...",
+    text: "today's gratitude vibes...",
     author: "",
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +64,8 @@ export default function Home() {
     const fetchQuote = async () => {
       setIsLoading(true);
       try {
-        const dailyQuote = await getRandomQuote();
+        // Use the date as a seed to ensure different quotes on different days
+        const dailyQuote = await getRandomQuote(date);
         setQuote(dailyQuote);
       } catch (error) {
         console.error("Error fetching quote:", error);
@@ -127,6 +129,9 @@ export default function Home() {
       <div className="absolute top-1/4 right-[10%] w-32 h-32 rounded-full bg-primary/5 blur-3xl animate-fadeIn"></div>
       <div className="absolute bottom-1/3 left-[15%] w-40 h-40 rounded-full bg-primary/10 blur-3xl animate-fadeIn"></div>
 
+      {/* Social links component */}
+      <SocialLinks />
+
       {/* Decorative text */}
       <div
         className="absolute top-[15%] left-[8%] text-4xl text-primary/20 font-cute rotate-[-10deg] animate-fadeIn"
@@ -176,7 +181,7 @@ export default function Home() {
         </div>
 
         {/* Breathing Circle component */}
-        <div className="mt-8 mb-16">
+        <div className="mt-8 mb-8">
           <BreathingCircle />
         </div>
       </div>

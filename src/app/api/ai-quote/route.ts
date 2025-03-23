@@ -6,19 +6,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Fallback quotes in case the API call fails
+// Only one fallback quote in case the API call fails
 const fallbackQuotes = [
   {
-    text: "Your journey of self-improvement begins with the simple act of acknowledging your worth each morning.",
-    author: "AI Reflection",
-  },
-  {
-    text: "Gratitude doesn't change what you have, it transforms how you experience what you have.",
-    author: "AI Wisdom",
-  },
-  {
-    text: "Today's small moments of mindfulness are tomorrow's foundation of peace.",
-    author: "AI Insight",
+    text: "Gratitude turns what we have into enough.",
+    author: "Aesop",
   },
 ];
 
@@ -95,32 +87,84 @@ async function generateQuoteWithOpenAI() {
   }
 }
 
-function getFallbackQuote() {
-  const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
+function getFallbackQuote(dateSeed?: string | null) {
+  let quote;
+
+  if (dateSeed) {
+    // Create a simple hash from the date string
+    const hashCode = (str: string): number => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return Math.abs(hash);
+    };
+
+    // Get deterministic quote based on date
+    const index = hashCode(dateSeed) % fallbackQuotes.length;
+    quote = fallbackQuotes[index];
+  } else {
+    // Random fallback if no date
+    const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
+    quote = fallbackQuotes[randomIndex];
+  }
+
   return {
-    quote: fallbackQuotes[randomIndex],
-    timestamp: new Date().toISOString(),
+    quote,
+    timestamp: dateSeed
+      ? `${dateSeed}T12:00:00.000Z`
+      : new Date().toISOString(),
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // First check if we have a cached quote
-    const cachedQuote = getCachedQuote();
-    if (cachedQuote) {
-      return NextResponse.json(cachedQuote);
+    // Get the date from the request URL query params
+    const { searchParams } = new URL(request.url);
+    const dateSeed = searchParams.get("date");
+
+    // Use the date as a cache key if provided
+    if (dateSeed) {
+      // Look for a cached quote with this specific date
+      const cachedDateQuote = quoteCache.find(
+        (item) => item.timestamp.split("T")[0] === dateSeed
+      );
+
+      if (cachedDateQuote) {
+        return NextResponse.json(cachedDateQuote);
+      }
+    } else {
+      // If no date provided, check for any cached quote
+      const cachedQuote = getCachedQuote();
+      if (cachedQuote) {
+        return NextResponse.json(cachedQuote);
+      }
     }
 
-    // If no cache, generate a new quote
+    // If no cache or specific date quote not found, generate a new quote
     const generatedQuote = await generateQuoteWithOpenAI();
     if (generatedQuote) {
+      // If we have a date seed, set the timestamp to that date (at noon)
+      if (dateSeed) {
+        generatedQuote.timestamp = `${dateSeed}T12:00:00.000Z`;
+      }
       return NextResponse.json(generatedQuote);
     }
 
-    // If OpenAI fails, use fallback
-    return NextResponse.json(getFallbackQuote());
+    // If OpenAI fails, use fallback with date seed if provided
+    const fallbackQuote = getFallbackQuote(dateSeed);
+    return NextResponse.json(fallbackQuote);
   } catch (error) {
     console.error("Error in quote API:", error);
-    return NextResponse.json(getFallbackQuote());
+    // Get date from request even in error case
+    try {
+      const { searchParams } = new URL(request.url);
+      const dateSeed = searchParams.get("date");
+      return NextResponse.json(getFallbackQuote(dateSeed));
+    } catch {
+      return NextResponse.json(getFallbackQuote());
+    }
   }
 }
